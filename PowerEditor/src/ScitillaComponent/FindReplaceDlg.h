@@ -171,7 +171,7 @@ private:
 	};
 
 	bool isLineActualSearchResult(const generic_string & s) const;
-	generic_string & prepareStringForClipboard(generic_string & s) const;
+		generic_string & prepareStringForClipboard(generic_string & s) const;
 
 	static FoundInfo EmptyFoundInfo;
 	static SearchResultMarking EmptySearchResultMarking;

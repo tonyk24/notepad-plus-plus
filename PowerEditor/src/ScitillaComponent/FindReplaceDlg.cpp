@@ -703,6 +703,8 @@ INT_PTR CALLBACK FindReplaceDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM
 			 _findClosePos.left = p.x;
 			 _findClosePos.top = p.y + 10;
 
+			 ::SendMessage(GetDlgItem(_hSelf, IDC_PROGRESSBAR), PBM_SETPOS, (WPARAM)0, 0);
+
 			 NativeLangSpeaker *pNativeSpeaker = (NppParameters::getInstance())->getNativeLangSpeaker();
 			 generic_string tip2show = pNativeSpeaker->getLocalizedStrFromID("shift-change-direction-tip");
 			 if (tip2show.empty())
@@ -1749,7 +1751,8 @@ int FindReplaceDlg::processRange(ProcessOperation op, FindReplaceInfo & findRepl
 	if (op == ProcessReplaceAll || op == ProcessFindAll)
 		flags |= SCFIND_REGEXP_EMPTYMATCH_NOTAFTERMATCH;
 	
-	
+	::SendMessage(GetDlgItem(_hSelf, IDC_PROGRESSBAR), PBM_SETPOS, (WPARAM)0, 0);
+	const clock_t beginTime = clock();
 
 	if (op == ProcessMarkAll && colourStyleID == -1)	//if marking, check if purging is needed
 	{
@@ -1786,6 +1789,33 @@ int FindReplaceDlg::processRange(ProcessOperation op, FindReplaceInfo & findRepl
 		int foundTextLen = targetEnd - targetStart;
 		int replaceDelta = 0;
 
+		// Update progress information
+		if (nbProcessed % 1000 == 0)
+		{
+			double progress = 100.0*double(targetStart) / double(findReplaceInfo._endRange);
+			::SendMessage(GetDlgItem(_hSelf, IDC_PROGRESSBAR), PBM_SETPOS, (WPARAM)int(progress), 0);
+
+			double elapsedSeconds = double(clock() - beginTime) / CLOCKS_PER_SEC;
+			if (progress > 1.0)
+			{
+				double onePercentElapsedTime = elapsedSeconds / progress;
+				double remainingSeconds = onePercentElapsedTime* (100.0 - progress);
+				generic_string result;
+
+					TCHAR moreInfo[64];
+					if (remainingSeconds < 60.0)
+						wsprintf(moreInfo, TEXT("Remaining time: %d seconds"), int(remainingSeconds));
+					else
+					{
+						int nRemainingMinutes = int(remainingSeconds / 60.0);
+						int nRemainingSeconds = int(remainingSeconds) % 60;
+						wsprintf(moreInfo, TEXT("Remaining time: %d minutes %d seconds"), nRemainingMinutes, nRemainingSeconds);
+					}
+					result = moreInfo;
+
+				setStatusbarMessage(result, FSMessage);
+			}
+		}
 				
 		switch (op)
 		{
@@ -1967,6 +1997,7 @@ int FindReplaceDlg::processRange(ProcessOperation op, FindReplaceInfo & findRepl
 		findReplaceInfo._endRange += replaceDelta;									//adjust end of range in case of replace
 	}
 
+	::SendMessage(GetDlgItem(_hSelf, IDC_PROGRESSBAR), PBM_SETPOS, (WPARAM)100, 0);
 	delete [] pTextFind;
 	delete [] pTextReplace;
 
