@@ -369,7 +369,7 @@ private :
 	winVer _winVer;
 	StatusBar _statusBar;
 	FindStatus _statusbarFindStatus;
-
+	bool _cancelOngoingFind = false;
 	
 
 	void enableReplaceFunc(bool isEnable);
@@ -377,6 +377,7 @@ private :
 	void enableFindInFilesFunc();
 	void enableMarkAllControls(bool isEnable);
 	void enableMarkFunc();
+	void enableAllFind(bool isEnable);
 
 	void setDefaultButton(int nID) {
 		SendMessage(_hSelf, DM_SETDEFID, nID, 0L);

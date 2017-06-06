@@ -843,6 +843,7 @@ INT_PTR CALLBACK FindReplaceDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM
 			{
 //Single actions
 				case IDCANCEL:
+					_cancelOngoingFind = true;
 					(*_ppEditView)->execute(SCI_CALLTIPCANCEL);
 					setStatusbarMessage(generic_string(), FSNoMessage);
 					display(false);
@@ -1754,6 +1755,9 @@ int FindReplaceDlg::processRange(ProcessOperation op, FindReplaceInfo & findRepl
 	::SendMessage(GetDlgItem(_hSelf, IDC_PROGRESSBAR), PBM_SETPOS, (WPARAM)0, 0);
 	const clock_t beginTime = clock();
 
+	// Disable all buttons during search
+	enableAllFind(false);
+
 	if (op == ProcessMarkAll && colourStyleID == -1)	//if marking, check if purging is needed
 	{
 		if (_env->_doPurge) {
@@ -1768,7 +1772,7 @@ int FindReplaceDlg::processRange(ProcessOperation op, FindReplaceInfo & findRepl
 
 	//Initial range for searching
 	pEditView->execute(SCI_SETSEARCHFLAGS, flags);
-	
+	_cancelOngoingFind = false;
 	
 	bool findAllFileNameAdded = false;
 
@@ -1789,6 +1793,20 @@ int FindReplaceDlg::processRange(ProcessOperation op, FindReplaceInfo & findRepl
 		int foundTextLen = targetEnd - targetStart;
 		int replaceDelta = 0;
 
+		if (nbProcessed % 100)
+		{
+			MSG msg;
+			if (::PeekMessage(&msg, NULL, 0, 0, PM_NOREMOVE))
+			{
+				if (::GetMessage(&msg, NULL, 0, 0))
+				{
+					::TranslateMessage(&msg);
+					::DispatchMessage(&msg);
+				}
+			}
+		}
+		if (_cancelOngoingFind)
+			break;
 		// Update progress information
 		if (nbProcessed % 1000 == 0)
 		{
@@ -1998,6 +2016,7 @@ int FindReplaceDlg::processRange(ProcessOperation op, FindReplaceInfo & findRepl
 	}
 
 	::SendMessage(GetDlgItem(_hSelf, IDC_PROGRESSBAR), PBM_SETPOS, (WPARAM)100, 0);
+	enableAllFind(true);
 	delete [] pTextFind;
 	delete [] pTextReplace;
 
@@ -2661,6 +2680,22 @@ void FindReplaceDlg::enableMarkFunc()
 	::SetWindowText(_hSelf, label);
 	setDefaultButton(IDCMARKALL);
 }
+
+void FindReplaceDlg::enableAllFind(bool isEnable)
+{
+	::EnableWindow(::GetDlgItem(_hSelf, IDOK), isEnable);
+	::EnableWindow(::GetDlgItem(_hSelf, IDCMARKALL), isEnable);
+	::EnableWindow(::GetDlgItem(_hSelf, IDC_CLEAR_ALL), isEnable);
+	::EnableWindow(::GetDlgItem(_hSelf, IDCCOUNTALL), isEnable);
+	::EnableWindow(::GetDlgItem(_hSelf, IDC_FINDALL_OPENEDFILES), isEnable);
+	::EnableWindow(::GetDlgItem(_hSelf, IDC_FINDALL_CURRENTFILE), isEnable);
+	::EnableWindow(::GetDlgItem(_hSelf, IDREPLACE), isEnable);
+	::EnableWindow(::GetDlgItem(_hSelf, IDREPLACEALL), isEnable);
+	::EnableWindow(::GetDlgItem(_hSelf, IDC_REPLACE_OPENEDFILES), isEnable);
+	::EnableWindow(::GetDlgItem(_hSelf, IDD_FINDINFILES_FIND_BUTTON), isEnable);
+	::EnableWindow(::GetDlgItem(_hSelf, IDD_FINDINFILES_REPLACEINFILES), isEnable);
+}
+
 void FindReplaceDlg::combo2ExtendedMode(int comboID)
 {
 	HWND hFindCombo = ::GetDlgItem(_hSelf, comboID);
